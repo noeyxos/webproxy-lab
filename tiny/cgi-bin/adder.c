@@ -10,25 +10,7 @@ int main(void)
   char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE];
   int n1 = 0, n2 = 0;
 
-  // QUERY_STRING 환경변수에 저장된, HTTP Request 인자로 받은 값을 getenv 함수로 가져온다
-  // if ((buf = getenv("QUERY_STRING")) != NULL)
-  // {
-
-  //   // 인자는 '&'로 구분되어 있으므로 '&'를 기준으로 나눈다. p는 &를 가리킨다
-  //   p = strchr(buf, '&');
-  //   // &를 널 문자로 바꿔, 각 문자열(인자)들을 널 문자 기준으로 구분한다.
-  //   // 마치 배열처럼 사용할 수 있게 된다.
-  //   *p = '\0'
-  //   // 첫 번째 인자를 arg1에 저장
-  //   strcpy(arg1, buf);
-  //   // 두 번째 인자를 arg2에 저장
-  //   strcpy(arg2, p + 1);
-
-  //   // arg1, arg2 에 있는 값을 정수로 변환하여 저장한다
-  //   n1 = atoi(arg1);
-  //   n2 = atoi(arg2);
-  // }
-
+  // QUERY_STRING 환경변수에 저장된, HTTP Request 인자로 받은 값을 getenv 함수로 가져온다.
   if ((buf = getenv("QUERY_STRING")) != NULL)
   {
 
@@ -38,6 +20,8 @@ int main(void)
     // 마치 배열처럼 사용할 수 있게 된다.
     *p = '\0';
 
+    // buf 가 1&2 형식이 아니라 par1=1&par2=2 이므로
+    // 인자를 '='를 기준으로 또 나누어준다.
     a = strchr(buf, '=');
     *a = '\0';
 

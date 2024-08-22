@@ -210,38 +210,53 @@ void serve_static(int fd, char *filename, int filesize)
 
 #else
 // HEAD method 처리를 위한 인자 추가
+// 정적 컨텐츠를 클라이언트로 전송하는 함수
 void serve_static(int fd, char *filename, int filesize, char *method)
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
 
   /* Send response headers to client */
+  // 파일 타입(확장자) 구하기
   get_filetype(filename, filetype);
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
   sprintf(buf, "%sConnection: close\r\n", buf);
   sprintf(buf, "%sContent-length: %d\r\n", buf, filesize);
   sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
+
+  // response header 전송하기
   Rio_writen(fd, buf, strlen(buf));
+
+  // 전송한 header 를 서버측 로컬에 한번 띄우기
   printf("Response headers:\n");
   printf("%s", buf);
 
+  // response body 만들어 전송하기
   if (strcasecmp(method, "GET") == 0)
   {
     /* Send response body to client */
+    // 요청받은 파일 열기
     srcfd = Open(filename, O_RDONLY, 0);
+
+    // 파일을 가상메모리 영역으로 매핑하기
     // srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
     // solved problem 11.9
     srcp = malloc(filesize);
     Rio_readn(srcfd, srcp, filesize);
     Close(srcfd);
+
+    // 가상 메모리에 있던 파일 클라이언트로 보내기 (response body 전송)
     Rio_writen(fd, srcp, filesize);
+
+    // 파일이 차지했던 메모리 반환
     // Munmap(srcp, filesize);
     free(srcp);
   }
 }
 #endif
 /* * get_filetype - Derive file type from filename*/
+// 파일 이름으로부터 확장자 추출
 void get_filetype(char *filename, char *filetype)
 {
   if (strstr(filename, ".html"))
@@ -258,22 +273,31 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "text/plain");
 }
 
+// 동적 컨텐츠를 클라이언트로 전송하는 함수
 void serve_dynamic(int fd, char *filename, char *cgiargs, char *method)
 {
   char buf[MAXLINE], *emptylist[] = {NULL};
 
   /* Return first part of HTTP response */
+  // 요청 성공 메시지만 우선적으로 전송한다.
+  // 나머지 응답 (헤더, 바디)는 CGI 프로그램이 전송해야함.
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   Rio_writen(fd, buf, strlen(buf));
   sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf));
 
+  // Fork 로 자식 프로세스 생성, 생성되면 0을 반환한다
   if (Fork() == 0)
   { /* Child */
+
     /* Real server would set all CGI vars here */
+    // CGI 프로그램에 인자를 전달하기 위해, QUERY_STRING 환경변수의 값을 설정한다
     setenv("QUERY_STRING", cgiargs, 1);
     // method를 cgi-bin/adder.c에 넘겨주기 위해 환경변수 set
     setenv("REQUEST_METHOD", method, 1);
+
+    // 자식은 자신의 표준 출력을 연결 식별자로 재지정한다.
+    // fd를 복제하여, STDOUT_FILENO를 통해 하는 작업이 fd를 통해 하는 것과 동일한 효과를 낸다.
     Dup2(fd, STDOUT_FILENO);              /* Redirect stdout to client */
     Execve(filename, emptylist, environ); /* Run CGI program */
   }
